@@ -6,7 +6,7 @@
 
 ## News
 
-👍2025/03/07: This paper accepted to Computer Vision and Image Understanding
+👍2025/03/07: This paper accepted to Computer Vision and Image Understanding.
 
 ## Environment
 
@@ -22,7 +22,7 @@ Then configuration [Ebsynth](https://github.com/jamriska/ebsynth).
 We have provided weights for the three styles pre-trained in the paper:
     [Miles](https://www.alipan.com/s/vkhG1PV2Ccm), 
     [JinX](https://www.alipan.com/s/kR23SFnLzVv), 
-    [Elsa](https://www.alipan.com/s/SpjHrQPxoM1), 
+    [Elsa](https://www.alipan.com/s/SpjHrQPxoM1). 
 You can put them into the 'dreambooth_models/' directory.
 
 ## 2. Quick Start
