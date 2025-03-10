@@ -88,7 +88,6 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
 
     def forward(self, hidden_states, encoder_hidden_states=None, timestep=None, return_dict: bool = True):
         # Input
-        # print(hidden_states.size())  ##torch.Size([2, 320, 30, 64, 64])
         assert hidden_states.dim() == 5, f"Expected hidden_states to have ndim=5, but got ndim={hidden_states.dim()}."
         video_length = hidden_states.shape[2]
         hidden_states = rearrange(hidden_states, "b c f h w -> (b f) c h w")
@@ -108,8 +107,6 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
             hidden_states = self.proj_in(hidden_states)
 
         # Blocks
-        # print(self.transformer_blocks)
-        # exit()
         for block in self.transformer_blocks:
             hidden_states = block(
                 hidden_states,
@@ -237,11 +234,9 @@ class BasicTransformerBlock(nn.Module):
 
         if self.attn2 is not None:
             # Cross-Attention
-            # print(hidden_states.size())
             norm_hidden_states = (
                 self.norm2(hidden_states, timestep) if self.use_ada_layer_norm else self.norm2(hidden_states)
             )
-            # print(norm_hidden_states.size())
             hidden_states = (
                 self.attn2(
                     norm_hidden_states, encoder_hidden_states=encoder_hidden_states, attention_mask=attention_mask
@@ -284,8 +279,6 @@ class FullyFrameAttention(nn.Module):
     ):
         super().__init__()
         inner_dim = dim_head * heads
-        # print(dim_head)
-        # print(heads)
         cross_attention_dim = cross_attention_dim if cross_attention_dim is not None else query_dim
         self.upcast_attention = upcast_attention
         self.upcast_softmax = upcast_softmax
@@ -293,9 +286,6 @@ class FullyFrameAttention(nn.Module):
         self.scale = dim_head**-0.5
 
         self.heads = heads
-        # for slice_size > 0 the attention score computation
-        # is split across the batch axis to save memory
-        # You can set slice_size with `set_attention_slice`
         self.sliceable_head_dim = heads
         self._slice_size = None
         self._use_memory_efficient_attention_xformers = False
@@ -305,19 +295,13 @@ class FullyFrameAttention(nn.Module):
             self.group_norm = nn.GroupNorm(num_channels=inner_dim, num_groups=norm_num_groups, eps=1e-5, affine=True)
         else:
             self.group_norm = None
-        # print(self.group_norm)  None
-        self.to_q = nn.Linear(query_dim, inner_dim, bias=bias)  #查询
-        self.to_k = nn.Linear(cross_attention_dim, inner_dim, bias=bias)#  键
-        self.to_v = nn.Linear(cross_attention_dim, inner_dim, bias=bias) #  值
-        # print(query_dim)
-        # print(cross_attention_dim)
-        # print(inner_dim)
-        # print("1`11111111111111111111111111")
+        self.to_q = nn.Linear(query_dim, inner_dim, bias=bias)
+        self.to_k = nn.Linear(cross_attention_dim, inner_dim, bias=bias)
+        self.to_v = nn.Linear(cross_attention_dim, inner_dim, bias=bias)
         if self.added_kv_proj_dim is not None:
             self.add_k_proj = nn.Linear(added_kv_proj_dim, cross_attention_dim)
             self.add_v_proj = nn.Linear(added_kv_proj_dim, cross_attention_dim)
 
-        #定义了线性层to_out和dropout层，用于最终的输出
         self.to_out = nn.ModuleList([])
         self.to_out.append(nn.Linear(inner_dim, query_dim))
         self.to_out.append(nn.Dropout(dropout))
@@ -420,9 +404,6 @@ class FullyFrameAttention(nn.Module):
         query = query.contiguous()
         key = key.contiguous()
         value = value.contiguous()
-        ## query.size() : B, video_length*_d_query, C
-        ## key.size() : B, video_length*_d_key, C
-        ## value.size() : B, video_length*_d_value, C
         _d_query, _d_key, _d_value = query.shape[1]//video_length, key.shape[1]//video_length, value.shape[1]//video_length
         _attention_list = [0] * video_length
         _attention_weight_list = [0] * video_length
@@ -438,32 +419,17 @@ class FullyFrameAttention(nn.Module):
                 _attention_weight_list[put_back_pos] += 1
         for _i in range(len(_attention_weight_list)) : _attention_list[_i] = _attention_list[_i] / float(_attention_weight_list[_i]) 
         hidden_states = torch.cat(_attention_list, dim=1)
-        # hidden_states = xformers.ops.memory_efficient_attention(query, key, value, attn_bias=attention_mask)
         hidden_states = self.reshape_batch_dim_to_heads(hidden_states)
         return hidden_states
 
     def forward(self, hidden_states, encoder_hidden_states=None, attention_mask=None, video_length=None):
         batch_size, sequence_length, _ = hidden_states.shape
-        # print(hidden_states.size()) #   torch.Size([18, 4096, 320])
-        # print("111111111111111111111111111111111111111111111")
-        # print(encoder_hidden_states)
-        # print("222222222222222222222222222222222222222222222")
-        # print(attention_mask)
-        # print("333333333333333333333333333333333333333333333")
-        # print(video_length)  #   30
-        # print("444444444444444444444444444444444444444444444")
-        # print(inter_frame)
-        # exit()
-        # encoder_hidden_states = encoder_hidden_states
 
         if self.group_norm is not None:
             hidden_states = self.group_norm(hidden_states.transpose(1, 2)).transpose(1, 2)
 
         query = self.to_q(hidden_states)  # (bf) x d(hw) x c
-        # print(query.size()) # torch.Size([60, 4096, 320])，随LDM变化
         dim = query.shape[-1]
-
-
         # All frames
         query = rearrange(query, "(b f) d c -> b (f d) c", f=video_length)
         
@@ -475,33 +441,16 @@ class FullyFrameAttention(nn.Module):
 
         # LDM
         encoder_hidden_states = encoder_hidden_states if encoder_hidden_states is not None else hidden_states
-        # print(encoder_hidden_states.size())
         key = self.to_k(encoder_hidden_states)
         value = self.to_v(encoder_hidden_states)
-        # print(value.size())
-        # print(inter_frame)
-        # if inter_frame:
         
         key = rearrange(key, "(b f) d c -> b f d c", f=video_length)
-            # print(key.size())
         value = rearrange(value, "(b f) d c -> b f d c", f=video_length)
-            # print(value.size())
         key = rearrange(key, "b f d c -> b (f d) c")
-            # print(key.size())
         value = rearrange(value, "b f d c -> b (f d) c")
-            # print(value.size())
-        # else:
-        #     # All frames
-        #     key = rearrange(key, "(b f) d c -> b (f d) c", f=video_length)
-        #     # print(key.size())
-        #     value = rearrange(value, "(b f) d c -> b (f d) c", f=video_length)
-        #     # print(value.size())
 
         key = self.reshape_heads_to_batch_dim(key)
         value = self.reshape_heads_to_batch_dim(value)
-        # print(key.size())
-        # print(value.size())
-        # print("1111111111111111111111111111111111111111")
         if attention_mask is not None:
             if attention_mask.shape[-1] != query.shape[1]:
                 target_length = query.shape[1]

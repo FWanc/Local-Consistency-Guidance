@@ -217,7 +217,6 @@ class BasicTransformerBlock(nn.Module):
             self.attn1._use_memory_efficient_attention_xformers = use_memory_efficient_attention_xformers
             if self.attn2 is not None:
                 self.attn2._use_memory_efficient_attention_xformers = use_memory_efficient_attention_xformers
-            # self.attn_temp._use_memory_efficient_attention_xformers = use_memory_efficient_attention_xformers
 
     def forward(self, hidden_states, encoder_hidden_states=None, timestep=None, attention_mask=None, video_length=None):
         # Individual-Attention
@@ -246,15 +245,6 @@ class BasicTransformerBlock(nn.Module):
 
         # Feed-forward
         hidden_states = self.ff(self.norm3(hidden_states)) + hidden_states
-
-        # # Temporal-Attention
-        # d = hidden_states.shape[1]
-        # hidden_states = rearrange(hidden_states, "(b f) d c -> (b d) f c", f=video_length)
-        # norm_hidden_states = (
-        #     self.norm_temp(hidden_states, timestep) if self.use_ada_layer_norm else self.norm_temp(hidden_states)
-        # )
-        # hidden_states = self.attn_temp(norm_hidden_states) + hidden_states
-        # hidden_states = rearrange(hidden_states, "(b d) f c -> (b f) d c", d=d)
 
         return hidden_states
 
@@ -425,16 +415,6 @@ class IndividualAttention(nn.Module):
 
     def forward(self, hidden_states, encoder_hidden_states=None, attention_mask=None, video_length=None):
         batch_size, sequence_length, _ = hidden_states.shape
-        # print(hidden_states.size()) #   torch.Size([18, 4096, 320])
-        # print("111111111111111111111111111111111111111111111")
-        # print(encoder_hidden_states)
-        # print("222222222222222222222222222222222222222222222")
-        # print(attention_mask)
-        # print("333333333333333333333333333333333333333333333")
-        # print(video_length)  #   30
-        # print("444444444444444444444444444444444444444444444")
-        # # print(inter_frame)
-        # exit()
         encoder_hidden_states = encoder_hidden_states
 
         if self.group_norm is not None:
@@ -467,9 +447,6 @@ class IndividualAttention(nn.Module):
         key = self.reshape_heads_to_batch_dim(key)
         value = self.reshape_heads_to_batch_dim(value)
 
-        # print(key.size())
-        # print(value.size())
-        # print("22222222222222222222222222222222222222222222222")
         if attention_mask is not None:
             if attention_mask.shape[-1] != query.shape[1]:
                 target_length = query.shape[1]

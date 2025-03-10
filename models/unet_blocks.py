@@ -283,16 +283,8 @@ class CrossAttnDownBlock3D(nn.Module):  ###相比官方文档，去掉了temp_co
 
     def forward(self, hidden_states, temb=None, encoder_hidden_states=None, attention_mask=None):
         output_states = ()
-        # print(self.attentions[0]) ##Transformer3DModel
-        # print(self.attentions[1])##Transformer3DModel
-        # print(self.resnets[0]) ###ResnetBlock3D
-        # print(self.resnets[1]) ###ResnetBlock3D
-        # exit()
         for resnet, attn in zip(self.resnets, self.attentions):
-            # print(resnet) ###ResnetBlock3D
-            # print(attn) ##Transformer3DModel
             if self.training and self.gradient_checkpointing:
-                # print(1)
                 def create_custom_forward(module, return_dict=None):
                     def custom_forward(*inputs):
                         if return_dict is not None:
@@ -307,7 +299,7 @@ class CrossAttnDownBlock3D(nn.Module):  ###相比官方文档，去掉了temp_co
                     create_custom_forward(attn, return_dict=False),
                     hidden_states,
                     encoder_hidden_states,
-                )[0]  ###torch.utils.checkpoint.checkpoint用于节省GPU，不过这个if根本不跑
+                )[0] 
             else:
                 hidden_states = resnet(hidden_states, temb)
                 hidden_states = attn(hidden_states, encoder_hidden_states=encoder_hidden_states).sample
@@ -487,7 +479,7 @@ class CrossAttnUpBlock3D(nn.Module):
         for resnet, attn in zip(self.resnets, self.attentions):
             # pop res hidden states
             res_hidden_states = res_hidden_states_tuple[-1]
-            res_hidden_states_tuple = res_hidden_states_tuple[:-1] ###将最后一个隐藏状态张量从元组或列表中提取出来，并将其赋值给 res_hidden_states，然后更新 res_hidden_states_tuple，将其移除最后一个元素。
+            res_hidden_states_tuple = res_hidden_states_tuple[:-1] 
             hidden_states = torch.cat([hidden_states, res_hidden_states], dim=1)
 
             if self.training and self.gradient_checkpointing:
