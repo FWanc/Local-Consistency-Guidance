@@ -34,7 +34,7 @@ bash inference_video2video.sh
 
 ## Personlized Training
 
-You can take 20 512-by-512 anime character faces from the anime /GC to train Dreambooth yourself. For specific training, see[Dreambooth](https://huggingface.co/docs/diffusers/training/dreambooth)
+You can take 20 512-by-512 anime character faces from the anime/CG to train Dreambooth yourself. For specific training, see[Dreambooth](https://huggingface.co/docs/diffusers/training/dreambooth)
 
 Or you can go from[Civitai](https://civitai.com/) download SD1.5 Dreambooth model and use it directly.
 
@@ -42,7 +42,7 @@ Or you can go from[Civitai](https://civitai.com/) download SD1.5 Dreambooth mode
 If you find our work helpful, please cite us.
 
 ```
-@article{wan2.1,
+@article{Local Consistency Guidance,
     title   = {Local Consistency Guidance: Personalized Stylization Method of Face Video},
     author  = {W Feng, Y Liu, J Pei, G Cheng, L Wang},
     journal = {Computer Vision and Image Understanding},
